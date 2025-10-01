@@ -1,2 +1,0 @@
-# Auction-service
-Auction service

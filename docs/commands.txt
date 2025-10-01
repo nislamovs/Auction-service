@@ -1,0 +1,32 @@
+
+
+# Create project
+
+npm init -y
+npm install
+
+serverless
+
+
+# Deploy
+
+export AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+export AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
+export AWS_REGION=us-east-1
+
+
+ serverless deploy
+
+ serverless remove
+
+
+serverless config credentials \
+  --provider aws \
+  --key $AWS_ACCESS_KEY_ID \
+  --secret $AWS_SECRET_ACCESS_KEY \
+  --profile playground
+
+
+sls deploy -v
+
+serverless deploy function --function createAuction

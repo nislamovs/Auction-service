@@ -1,0 +1,143 @@
+service: auction-service
+
+frameworkVersion: '4'
+
+plugins:
+  - serverless-bundle
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  memorySize: 256
+  stage: ${opt:stage, 'dev'}
+  region: eu-central-1
+#  logs:                     # do not create log-groups
+#    lambda: {}              # Enables CloudWatch logging
+#  profile: playground
+  iamRoleStatements:
+    - ${file(iam/AuctionsTableIAM.yml):AuctionsTableIAM}
+    - ${file(iam/SendMailIAM.yml):SendMailIAM}
+    - ${file(iam/AuctionsBucketIAM.yml):AuctionsBucketIAM}
+  environment:
+    AUCTIONS_TABLE_NAME: ${self:custom.AuctionsTable.name}
+    MAIL_QUEUE_URL: ${self:custom.MailQueue.url}
+    AUCTIONS_BUCKET_NAME: ${self:custom.AuctionsBucket.name}
+  Tags:
+    - Key: region
+      Value: ${self:provider.region}
+    - Key: environment
+      Value: ${self:provider.stage}
+    - Key: component
+      Value: 'auction-service'
+    - Key: solution
+      Value: 'platform-play'
+    - Key: deployer
+      Value: 'nizami.islamovs@gmail.com'
+    - Key: tagValue
+      Value: 'v 1.0.0'
+    - Key: StackName
+      Value: 'serverless-stack'
+    - Key: ManagedBy
+      Value: 'Serverless'
+    - Key: Repository
+      Value: 'github'
+
+
+
+functions:
+  createAuction:
+    handler: src/handlers/createAuction.handler
+#    environment:
+#      LOG_GROUP_NAME: /aws/lambda/hello_lambda
+    events:
+      - http:
+          path: /auction
+          method: POST
+          cors: true
+#          authorizer: #{self:custom.authorizer}
+    logs: false
+
+  getAuction:
+    handler: src/handlers/getAuctions.handler
+    events:
+      - http:
+          path: /auction
+          method: GET
+          cors: true
+          authorizer: #{self:custom.authorizer}
+    logs: false
+
+
+  getAuctionById:
+    handler: src/handlers/getAuctionByID.handler
+    events:
+      - http:
+          path: /auction/{id}
+          method: GET
+          cors: true
+          authorizer: #{self:custom.authorizer}
+    logs: false
+
+  placeBid:
+    handler: src/handlers/placeBid.handler
+    events:
+      - http:
+          path: /auction/{id}/bid
+          method: PATCH
+          cors: true
+          authorizer: #{self:custom.authorizer}
+    logs: false
+
+  uploadAuctionPicture:
+    handler: src/handlers/uploadAuctionPicture.handler
+    events:
+      - http:
+          path: /auction/{id}/picture
+          method: PATCH
+          cors: true
+          authorizer: #{self:custom.authorizer}
+    logs: false
+
+  processAuctions:
+    handler: src/handlers/processAuctions.handler
+    events:
+      - schedule: rate(1 minute)
+    logs: false
+
+  sendMail:
+    handler: src/handlers/sendMail.handler
+    events:
+      - sqs:
+        arn: ${self:custom.MailQueue.arn}
+        batchSize: 1
+  logs: false
+
+resources:
+  Resources:
+    AuctionsTable: ${file(resources/AuctionsTable.yml):AuctionsTable}
+    AuctionsBucket: ${file(resources/AuctionsBucket.yml):AuctionsBucket}
+    AuctionsBucketPolicy: ${file(resources/AuctionsBucket.yml):AuctionsBucketPolicy}
+    MailQueue: ${file(resources/MailQueue.yml):MailQueue}
+  Outputs:
+    MailQueueArn: ${file(resources/MailQueue.yml):Outputs.MailQueueArn}
+    MailQueueUrl: ${file(resources/MailQueue.yml):Outputs.MailQueueUlr}
+#    AuctionServiceHelloLogGroup:
+#      Type: AWS::Logs::LogGroup
+#      Properties:
+#        LogGroupName: /aws/lambda/hello_lambda   # taken from existing one : not possible create automatically or manually due to constrains
+#        RetentionInDays: 14
+
+custom:
+  MailQueue:
+    name: MailQueue-${self:provider.stage}
+    arn: !GetAtt MailQueue.arn
+    url: !Ref MailQueue
+#  authorizer: arn:aws:lambda:#{AWS::Region}:234234234234:function:auth-service-#{self:provider.stage}-auth
+  AuctionsTable:
+    name: !GetAtt AuctionsTable
+    arn:  !GetAtt AuctionsTable.Arn
+  AuctionsBucket:
+    name: auctions-bucket-${self:provider.stage}
+  bundle:
+    linting: false

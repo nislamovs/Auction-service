@@ -1,0 +1,6 @@
+SendMailIAM:
+  Effect: Allow
+  Action:
+    - ses:SendMail
+  Resource:
+    - ${self:custom.AuctionsTable.arn}

@@ -1,0 +1,4 @@
+create postman files
+
+test deployment
+test dynamodb
